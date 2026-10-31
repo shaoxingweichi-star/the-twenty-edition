@@ -98,52 +98,73 @@
   const audio = $("#backgroundMusic"), sound = $("#soundToggle");
   const music = config.music || { path: config.musicPath || "", useAmbientFallback: false };
   let ambient = null;
+  let audioGeneration = 0;
+  let audioStarting = false;
+  const isPlaying = () => Boolean(ambient?.context.state === "running" || (!audio.paused && !audio.ended));
   const setSoundState = (playing) => {
     sound.setAttribute("aria-pressed", String(playing));
     sound.setAttribute("aria-label", playing ? "Pause background music" : "Play background music");
     $("#soundLabel").textContent = playing ? "Sound on" : "Sound off";
+    document.dispatchEvent(new CustomEvent("edition:sound", { detail: playing }));
   };
   const stopAmbient = () => {
     if (!ambient) return;
-    clearInterval(ambient.timer); ambient.context.close(); ambient = null;
+    clearInterval(ambient.timer); ambient.context.close().catch(() => {}); ambient = null;
   };
   const startAmbient = async () => {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const context = new AudioContext(); await context.resume();
+    if (!AudioContext || ambient) return;
+    const generation = audioGeneration;
+    const context = new AudioContext();
+    ambient = { context, timer: null };
+    context.onstatechange = () => {
+      if (ambient?.context === context && context.state !== "running") stopSound();
+      else setSoundState(isPlaying());
+    };
+    await context.resume();
+    if (generation !== audioGeneration || context.state !== "running") { stopAmbient(); return; }
     const master = context.createGain(); master.gain.value = 0.028; master.connect(context.destination);
-    const nodes = []; const notes = [261.63, 329.63, 392, 493.88]; let index = 0;
+    const notes = [261.63, 329.63, 392, 493.88]; let index = 0;
     const playNote = () => {
       const oscillator = context.createOscillator(), gain = context.createGain();
       oscillator.type = "sine"; oscillator.frequency.value = notes[index++ % notes.length] / 2;
       gain.gain.setValueAtTime(0, context.currentTime); gain.gain.linearRampToValueAtTime(0.9, context.currentTime + 1.1); gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 5.2);
-      oscillator.connect(gain).connect(master); oscillator.start(); oscillator.stop(context.currentTime + 5.3); nodes.push(oscillator);
+      oscillator.connect(gain).connect(master); oscillator.start(); oscillator.stop(context.currentTime + 5.3);
+      oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
     };
-    playNote(); const timer = setInterval(playNote, 2600); ambient = { context, nodes, timer };
+    playNote(); ambient.timer = setInterval(playNote, 2600);
   };
+  const stopSound = () => { audioGeneration++; audio.pause(); stopAmbient(); setSoundState(false); };
+  const startSound = async () => {
+    if (audioStarting || isPlaying()) return;
+    audioStarting = true;
+    const generation = audioGeneration;
+    try {
+      if (music.path) {
+        try { await audio.play(); }
+        catch (_) { if (generation === audioGeneration && music.useAmbientFallback) await startAmbient(); }
+      } else if (music.useAmbientFallback) await startAmbient();
+      if (generation !== audioGeneration) { audio.pause(); stopAmbient(); }
+    } catch (_) { stopAmbient(); }
+    finally { audioStarting = false; setSoundState(isPlaying()); }
+  };
+  window.editionSound = { isPlaying, stop: stopSound, start: startSound, toggle: () => isPlaying() || audioStarting ? stopSound() : startSound() };
   if (music.path || music.useAmbientFallback) {
     sound.hidden = false;
     if (music.path) audio.src = music.path;
-    sound.addEventListener("click", async () => {
-      if (music.path) {
-        try { if (audio.paused) await audio.play(); else audio.pause(); } catch (_) { if (music.useAmbientFallback) { await startAmbient(); setSoundState(true); } }
-      } else if (ambient) { stopAmbient(); setSoundState(false); } else { await startAmbient(); setSoundState(Boolean(ambient)); }
-    });
+    sound.addEventListener("click", window.editionSound.toggle);
     audio.addEventListener("play", () => setSoundState(true));
     audio.addEventListener("pause", () => setSoundState(false));
-    audio.addEventListener("error", () => { if (!music.useAmbientFallback) sound.hidden = true; });
+    audio.addEventListener("error", () => setSoundState(isPlaying()));
+    audio.addEventListener("ended", () => setSoundState(false));
     if (music.autoplayOnOpen) {
-      $("#openEdition").addEventListener("click", async () => {
-        if (music.path && audio.paused) {
-          try { await audio.play(); } catch (_) { if (music.useAmbientFallback && !ambient) { await startAmbient(); setSoundState(Boolean(ambient)); } }
-        } else if (!music.path && !ambient) {
-          await startAmbient(); setSoundState(Boolean(ambient));
-        }
-      });
+      $("#openEdition").addEventListener("click", startSound);
     }
   }
+  // Backgrounding/interruption must not leave an inaudible loop or restart without a gesture.
+  document.addEventListener("visibilitychange", () => { if (document.hidden) stopSound(); });
+  window.addEventListener("pagehide", stopSound);
 
   const observer = new IntersectionObserver((entries) => entries.forEach((entry) => { if (entry.isIntersecting) entry.target.classList.add("in-view"); }), { threshold: 0.12 });
   $$(".section, .portrait").forEach((element) => observer.observe(element));
-  $("#surpriseButton").addEventListener("click", () => { const surprise = $("#surprise"); surprise.hidden = false; surprise.classList.add("is-visible"); setTimeout(() => { surprise.classList.remove("is-visible"); setTimeout(() => surprise.hidden = true, 400); }, 3600); });
 })();
