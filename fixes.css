@@ -19,4 +19,5 @@
 .access-status { height: 1.5em; margin: 1.25rem 0 0; color: #c7bbab; font: 10px var(--mono); letter-spacing: .08em; }
 .access-index { position: absolute; bottom: 5vh; margin: 0; font: 10px var(--mono); letter-spacing: .08em; }
 body.is-gated { overflow: hidden; }
+.music-resume { position: fixed; z-index: 110; right: max(20px, env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); border: 1px solid #b99a63; background: #171613; color: #F2EEE5; padding: 12px 18px; min-height: 44px; font: 12px "DM Sans", "PingFang SC", sans-serif; cursor: pointer; }
 @media (max-width: 500px) { .access-form { align-items: center; flex-direction: column; } .access-form input { height: 48px; } }

@@ -51,9 +51,10 @@ window.BIRTHDAY_CONFIG = {
     dedication: "Made for you, and only you."
   },
   music: {
-    // Add a local MP3 here when you have one, e.g. "assets/birthday-music.mp3".
-    // With no file, the site plays the built-in, user-started ambient loop instead.
-    path: "",
+    // Original synthesised score "A New Page" (106.7 s); no samples or vocals.
+    path: "assets/birthday-music.mp3",
+    volume: 0.3,
+    fadeInMs: 2000,
     useAmbientFallback: true,
     autoplayOnOpen: true
   }

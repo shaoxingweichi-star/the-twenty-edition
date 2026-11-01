@@ -12,6 +12,14 @@ The edition includes a soft built-in ambient loop that starts when the recipient
 
 ## Birthday film
 
+### Background music
+
+`assets/birthday-music.mp3` contains the original 106.7-second instrumental “A New Page”, composed and synthesised locally (soft additive piano and harmonic string pad, no recordings, samples, vocals or percussion). Source score and generator are in `work/compose_birthday.py`; intermediate WAV and measurements stay in `work/`. Only the MP3 needs to be published. `music.volume` defaults to `0.3`, and `music.fadeInMs` to `2000`. Clicking Open your edition requests playback; loading the page never starts it. An explicit mute is remembered for the tab session, including across reloads, and the film shares the same controller without restarting music.
+
+`edition-sound.js` decodes the track once in Web Audio, blends 80 ms of its tail/head, and loops one AudioBufferSource without a restart gap. Gain ramps to 30% in two seconds, including on resume. Pausing remembers the track position. Tracks with long built-in silence or an unsuitable musical ending may still need editing for an ideal musical loop. Missing/invalid tracks fall back to the existing synthesised ambient sound. If audio permission is blocked, a visible “点击开启音乐” button retries directly from a tap. Backgrounding stops sound and returning does not restart it. Native audio is a last-resort fallback where Web Audio is absent; precise fading/loop continuity can depend on browser/device limitations there.
+
+iPhone WeChat/Safari permission/interruption behaviour still needs verification on a physical device. No third-party track is downloaded automatically.
+
 The final “One more thing” button opens an isolated, accessible full-screen film. Edit `easterEgg` in `config.js`: copy, four stage durations (milliseconds), and photo references with `portraitIndex` and `position`. Indices start at zero and reuse existing portraits; optional `image` overrides a photo path. Default stages run 4 / 8 / 9 / 9 seconds. The ending stays until Return or Close is pressed. Dedication fades in over 1.5 seconds. Skip opens the complete ending, Replay resets the single timeline, Escape closes, and Tab stays inside the dialog.
 
 The film shares the magazine audio controller; it preserves the existing mute choice. Sound starts only from an actual click. If a browser blocks playback, tap Enable sound again. A failed local track can fall back to the built-in synthesised ambient sound when enabled. No third-party music is used. Backgrounding pauses the timeline and stops audio; returning resumes the visual timeline but requires a new tap to restart sound. Reduced-motion users go directly to the ending. Failed photos leave a dark editorial background and readable captions. Reloading never restores an open film.
